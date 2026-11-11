@@ -15,6 +15,18 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 app.set('trust proxy', 1);
+app.use((req, _res, next) => {
+  if (process.env.VERCEL) {
+    const url = new URL(req.url, 'http://vercel.local');
+    const path = url.searchParams.get('__path');
+    if (path !== null) {
+      url.searchParams.delete('__path');
+      const query = url.searchParams.toString();
+      req.url = `/${path}${query ? `?${query}` : ''}`;
+    }
+  }
+  next();
+});
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({ origin: process.env.CLIENT_URL?.split(',') || ['http://localhost:5173'] }));
 app.use(express.json({ limit: '2mb' }));
@@ -67,5 +79,3 @@ if (!process.env.VERCEL) {
 }
 
 export default app;
-
-
