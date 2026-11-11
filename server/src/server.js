@@ -4,8 +4,6 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { connectDatabase } from './config/db.js';
 import authRoutes from './routes/auth.js';
 import publicRoutes from './routes/public.js';
@@ -15,7 +13,6 @@ import { publishedFilter } from './utils/postHelpers.js';
 
 const app = express();
 const port = process.env.PORT || 5000;
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 app.set('trust proxy', 1);
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
@@ -23,8 +20,15 @@ app.use(cors({ origin: process.env.CLIENT_URL?.split(',') || ['http://localhost:
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
+app.use(async (_req, _res, next) => {
+  try {
+    await connectDatabase();
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, limit: 30 }), authRoutes);
-app.use('/uploads', express.static(path.resolve(__dirname, '../uploads')));
 app.use('/api', publicRoutes);
 app.use('/api/admin', adminRoutes);
 
@@ -53,10 +57,15 @@ app.use((err, _req, res, _next) => {
   res.status(err.status || 500).json({ message: err.message || 'Server error' });
 });
 
-connectDatabase()
-  .then(() => app.listen(port, () => console.log(`API listening on http://localhost:${port}`)))
-  .catch((error) => {
-    console.error('Database connection failed', error);
-    process.exit(1);
-  });
+if (!process.env.VERCEL) {
+  connectDatabase()
+    .then(() => app.listen(port, () => console.log(`API listening on http://localhost:${port}`)))
+    .catch((error) => {
+      console.error('Database connection failed', error);
+      process.exit(1);
+    });
+}
+
+export default app;
+
 
