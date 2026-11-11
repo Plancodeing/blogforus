@@ -54,3 +54,26 @@ API health check: `http://localhost:5000/api/health`
 - Store uploads in S3, Cloudinary or another persistent object store when deploying to stateless hosting.
 - Use a managed MongoDB deployment with backups and restricted network access.
 - Replace the local HTML content editor with TipTap or CKEditor if a visual block editor is required.
+
+## Vercel deployment
+
+Create two Vercel projects from this repository:
+
+- Frontend root directory: `client`
+- Backend root directory: `server`
+
+Backend environment variables:
+
+- `MONGODB_URI`
+- `JWT_SECRET`
+- `CLIENT_URL`
+- `ADMIN_EMAIL`
+- `ADMIN_PASSWORD`
+- `BLOB_READ_WRITE_TOKEN`
+
+Frontend environment variable:
+
+- `VITE_API_URL=https://your-backend.vercel.app/api`
+
+After both deployments are live, set `CLIENT_URL` on the backend to the final frontend URL and redeploy it.
+
