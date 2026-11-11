@@ -1,8 +1,18 @@
 import mongoose from 'mongoose';
 
+let connectionPromise;
+
 export async function connectDatabase() {
+  if (mongoose.connection.readyState === 1) return mongoose.connection;
   mongoose.set('strictQuery', true);
-  await mongoose.connect(process.env.MONGODB_URI);
-  console.log(`MongoDB connected: ${mongoose.connection.host}`);
+  if (!connectionPromise) {
+    connectionPromise = mongoose.connect(process.env.MONGODB_URI).catch((error) => {
+      connectionPromise = null;
+      throw error;
+    });
+  }
+  await connectionPromise;
+  return mongoose.connection;
 }
+
 
