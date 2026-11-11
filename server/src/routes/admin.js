@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
+import { put } from '@vercel/blob';
 import slugify from 'slugify';
 import Post from '../models/Post.js';
 import Category from '../models/Category.js';
@@ -13,18 +12,9 @@ import { calculateReadingTime, uniquePostSlug } from '../utils/postHelpers.js';
 const router = Router();
 router.use(protect);
 
-const uploadDir = path.resolve('uploads');
-fs.mkdirSync(uploadDir, { recursive: true });
-const storage = multer.diskStorage({
-  destination: (_req, _file, callback) => callback(null, uploadDir),
-  filename: (_req, file, callback) => {
-    const safe = slugify(path.parse(file.originalname).name, { lower: true, strict: true });
-    callback(null, `${Date.now()}-${safe || 'image'}${path.extname(file.originalname).toLowerCase()}`);
-  }
-});
 const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 4 * 1024 * 1024 },
   fileFilter: (_req, file, callback) => callback(null, /^image\/(jpeg|png|webp|gif)$/.test(file.mimetype))
 });
 
@@ -84,10 +74,15 @@ router.delete('/posts/:id', allowRoles('admin'), async (req, res) => {
   res.json({ message: 'Post deleted' });
 });
 
-router.post('/upload', upload.single('image'), (req, res) => {
+router.post('/upload', upload.single('image'), async (req, res) => {
   if (!req.file) return res.status(400).json({ message: 'A valid image is required' });
-  const base = `${req.protocol}://${req.get('host')}`;
-  res.status(201).json({ url: `${base}/uploads/${req.file.filename}` });
+  const safeName = slugify(req.file.originalname, { lower: true, strict: true }) || `image-${Date.now()}`;
+  const blob = await put(`blog/${Date.now()}-${safeName}`, req.file.buffer, {
+    access: 'public',
+    contentType: req.file.mimetype,
+    addRandomSuffix: true
+  });
+  res.status(201).json({ url: blob.url });
 });
 
 router.get('/categories', async (_req, res) => res.json({ categories: await Category.find().sort({ name: 1 }) }));
@@ -118,4 +113,5 @@ router.delete('/authors/:id', allowRoles('admin'), async (req, res) => {
 router.get('/users', allowRoles('admin'), async (_req, res) => res.json({ users: await User.find().select('-password').sort({ name: 1 }) }));
 
 export default router;
+
 
