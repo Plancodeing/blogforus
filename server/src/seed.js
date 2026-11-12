@@ -18,10 +18,11 @@ const categories = [
 
 async function seed() {
   await connectDatabase();
+  const email = process.env.ADMIN_EMAIL || 'admin@example.com';
   const password = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'ChangeMe123!', 12);
   const admin = await User.findOneAndUpdate(
-    { email: process.env.ADMIN_EMAIL || 'admin@example.com' },
-    { name: 'Blog Administrator', password, role: 'admin', active: true },
+    { role: 'admin' },
+    { name: 'Blog Administrator', email, password, role: 'admin', active: true },
     { upsert: true, new: true }
   );
 
